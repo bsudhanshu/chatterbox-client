@@ -1,16 +1,17 @@
-
-
 var app = {
+  server:'http://parse.sfm8.hackreactor.com/chatterbox/classes/messages',
+  username: 'anonymous',
+  roomname: 'lobby',
   
   init() {
-    this.server = 'http://parse.sfm8.hackreactor.com/chatterbox/classes/messages';
+    app.username = window.location.search.substr(10);
     this.rooms = ['lobby'];
     this.friends = [];
   },
 
   send(message) {
     $.ajax({
-      url: 'http://parse.sfm8.hackreactor.com/chatterbox/classes/messages',
+      url: app.server,
       type: 'POST',
       data: JSON.stringify(message),
       contentType: 'application/json',
@@ -25,9 +26,10 @@ var app = {
 
   fetch() {
     $.ajax({
-      url: 'http://parse.sfm8.hackreactor.com/chatterbox/classes/messages',
+      url: app.server,
       type: 'GET',
-      data: {order: '-createdAt'},
+      // data: {order: '-createdAt'},
+      dataType: 'json',
       success: function (data) {
         var dataArr = data['results'];
         var dataSanitized = _.filter(dataArr, function(message) {
@@ -39,15 +41,16 @@ var app = {
         var dataRoom = _.filter(dataSanitized, function (message) {
           return (message['roomname'] === roomSelected);
         });
+
         for (var key in dataRoom) {
-          var room = encodeURI(dataRoom[key]['roomname']);
-          var username = encodeURI(dataRoom[key]['username']);
-          var text = encodeURI(dataRoom[key]['text']);
+          var room = dataRoom[key]['roomname'];
+          var username = dataRoom[key]['username'];
+          var text = dataRoom[key]['text'];
           app.renderMessage(username, text, room);
         }
 
         for (var key in dataSanitized) {
-          var rooma = encodeURI(dataSanitized[key]['roomname']);
+          var rooma = dataSanitized[key]['roomname'];
           app.renderRoom(rooma);
         }
       },
@@ -62,18 +65,13 @@ var app = {
   },
 
   renderMessage(username, text, room) {
+    var usernameSpan = $('<span></span>').text(username);
+    usernameSpan.addClass('username');
+    usernameSpan.addClass(`${username}`);
+    var textSpan = $('<span></span>').text(text);
+    var div = $(`<div></div>`).addClass('chat').append(usernameSpan).append(textSpan).appendTo($('#chats'));
     if (this.friends.includes(username)) {
-      $('#chats').append(
-      `<div class="chat friend">
-        <span class="username ${username}">${username}</span>
-        <span>${text}</span>
-      </div>`);
-    } else {
-      $('#chats').append(
-        `<div class="chat">
-          <span class="username ${username}">${username}</span>
-          <span>${text}</span>
-        </div>`);
+      usernameSpan.toggleClass('friend');
     }
   },
 
@@ -88,6 +86,8 @@ var app = {
     if (!this.friends.includes(username)) {
       this.friends.push(username);
     }
+
+
     app.clearMessages();
     app.fetch();
   },
@@ -105,9 +105,12 @@ var app = {
 
 $(document).ready(function() {
   app.init();
-
-  app.clearMessages();    
   app.fetch();
+
+  setInterval( function() {
+    app.clearMessages();    
+    app.fetch();
+  },10000);
     
   $(this).on('click', '.username', function(event) {
     console.log('gotcha ya friend!');
